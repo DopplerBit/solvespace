@@ -244,20 +244,33 @@ void GraphicsWindow::ParametricCurve::ConstrainPointIfCoincident(hEntity hpt) {
     }
 }
 
+
+void GraphicsWindow::MakeTangentArc() {
+  if(!LockedInWorkplane()) {
+    Error(_("Must be sketching in workplane to create tangent arc."));
+    return;
+  }
+
+  std::vector<hEntity> points;
+
+  points = gs.point;
+  ClearSelection();
+
+  for (uint i = 0; i < points.size(); i++) {
+
+    // The point corresponding to the vertex to be rounded.
+    Vector pshared = SK.GetEntity(points[i])->PointGetNum();
+    MakeTangentArc(pshared);
+  }
+
+}
+
 //-----------------------------------------------------------------------------
 // A single point must be selected when this function is called. We find two
 // non-construction line segments that join at this point, and create a
 // tangent arc joining them.
 //-----------------------------------------------------------------------------
-void GraphicsWindow::MakeTangentArc() {
-    if(!LockedInWorkplane()) {
-        Error(_("Must be sketching in workplane to create tangent arc."));
-        return;
-    }
-
-    // The point corresponding to the vertex to be rounded.
-    Vector pshared = SK.GetEntity(gs.point[0])->PointGetNum();
-    ClearSelection();
+void GraphicsWindow::MakeTangentArc(Vector pshared) {
 
     // First, find two requests (that are not construction, and that are
     // in our group and workplane) that generate entities that have an

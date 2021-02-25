@@ -696,6 +696,7 @@ public:
         void ConstrainPointIfCoincident(hEntity hpt);
     };
     void MakeTangentArc();
+    void MakeTangentArc(Vector pshared);
     void SplitLinesOrCurves();
     hEntity SplitEntity(hEntity he, Vector pinter);
     hEntity SplitLine(hEntity he, Vector pinter);

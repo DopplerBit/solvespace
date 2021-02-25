@@ -1265,7 +1265,7 @@ void GraphicsWindow::MenuRequest(Command id) {
 
         case Command::TANGENT_ARC:
             SS.GW.GroupSelection();
-            if(SS.GW.gs.n == 1 && SS.GW.gs.points == 1) {
+            if(SS.GW.gs.n >= 1 && SS.GW.gs.points >= 1) {
                 SS.GW.MakeTangentArc();
             } else if(SS.GW.gs.n != 0) {
                 Error(_("Bad selection for tangent arc at point. Select a "
