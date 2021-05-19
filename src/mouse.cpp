@@ -10,6 +10,8 @@ void GraphicsWindow::UpdateDraggedPoint(hEntity hp, double mx, double my) {
     Vector pos = p->PointGetNum();
     UpdateDraggedNum(&pos, mx, my);
     p->PointForceTo(pos);
+
+    SS.ScheduleShowTW();
 }
 
 void GraphicsWindow::UpdateDraggedNum(Vector *pos, double mx, double my) {
@@ -188,32 +190,23 @@ void GraphicsWindow::MouseMoved(double x, double y, bool leftDown,
             hEntity dragEntity = ChooseFromHoverToDrag().entity;
             if(dragEntity.v) e = SK.GetEntity(dragEntity);
             if(e && e->type != Entity::Type::WORKPLANE) {
-                Entity *e = SK.GetEntity(dragEntity);
+                if(!hoverWasSelectedOnMousedown) {
+                    // The user clicked an unselected entity, which
+                    // means they're dragging just the hovered thing,
+                    // not the full selection. So clear all the selection
+                    // except that entity.
+                    ClearSelection();
+                    MakeSelected(dragEntity);
+                }
                 if(e->type == Entity::Type::CIRCLE && selection.n <= 1) {
                     // Drag the radius.
-                    ClearSelection();
                     pending.circle = dragEntity;
                     pending.operation = Pending::DRAGGING_RADIUS;
                 } else if(e->IsNormal()) {
-                    ClearSelection();
                     pending.normal = dragEntity;
                     pending.operation = Pending::DRAGGING_NORMAL;
                 } else {
-                    if(!hoverWasSelectedOnMousedown) {
-                        // The user clicked an unselected entity, which
-                        // means they're dragging just the hovered thing,
-                        // not the full selection. So clear all the selection
-                        // except that entity.
-                        ClearSelection();
-                        MakeSelected(e->h);
-                    }
                     StartDraggingBySelection();
-                    if(!hoverWasSelectedOnMousedown) {
-                        // And then clear the selection again, since they
-                        // probably didn't want that selected if they just
-                        // were dragging it.
-                        ClearSelection();
-                    }
                     hover.Clear();
                     pending.operation = Pending::DRAGGING_POINTS;
                 }
@@ -425,6 +418,7 @@ void GraphicsWindow::MouseMoved(double x, double y, bool leftDown,
             SK.GetEntity(circle->distance)->DistanceForceTo(r);
 
             SS.MarkGroupDirtyByEntity(pending.circle);
+            SS.ScheduleShowTW();
             break;
         }
 
@@ -526,11 +520,16 @@ void GraphicsWindow::MouseRightUp(double x, double y) {
     }
 
     if(pending.operation == Pending::DRAGGING_NEW_LINE_POINT ||
-       pending.operation == Pending::DRAGGING_NEW_CUBIC_POINT)
+       pending.operation == Pending::DRAGGING_NEW_CUBIC_POINT ||
+       pending.operation == Pending::DRAGGING_NEW_ARC_POINT ||
+       pending.operation == Pending::DRAGGING_NEW_RADIUS ||
+       pending.operation == Pending::DRAGGING_NEW_POINT
+       )
     {
         // Special case; use a right click to stop drawing lines, since
         // a left click would draw another one. This is quicker and more
-        // intuitive than hitting escape. Likewise for new cubic segments.
+        // intuitive than hitting escape. Likewise for other entities
+        // for consistency.
         ClearPending();
         return;
     }
@@ -714,11 +713,12 @@ void GraphicsWindow::MouseRightUp(double x, double y) {
 
         if(gs.points == 1) {
             Entity *p = SK.GetEntity(gs.point[0]);
-            Constraint *c;
+            Constraint *c = nullptr;
             IdList<Constraint,hConstraint> *lc = &(SK.constraint);
-            for(c = lc->First(); c; c = lc->NextAfter(c)) {
-                if(c->type != Constraint::Type::POINTS_COINCIDENT) continue;
-                if(c->ptA == p->h || c->ptB == p->h) {
+            for(Constraint &ci : *lc) {
+                if(ci.type != Constraint::Type::POINTS_COINCIDENT) continue;
+                if(ci.ptA == p->h || ci.ptB == p->h) {
+                    c = &ci;
                     break;
                 }
             }
@@ -728,11 +728,10 @@ void GraphicsWindow::MouseRightUp(double x, double y) {
 
                     SS.UndoRemember();
                     SK.constraint.ClearTags();
-                    Constraint *c;
-                    for(c = SK.constraint.First(); c; c = SK.constraint.NextAfter(c)) {
-                        if(c->type != Constraint::Type::POINTS_COINCIDENT) continue;
-                        if(c->ptA == p->h || c->ptB == p->h) {
-                            c->tag = 1;
+                    for(Constraint &c : SK.constraint) {
+                        if(c.type != Constraint::Type::POINTS_COINCIDENT) continue;
+                        if(c.ptA == p->h || c.ptB == p->h) {
+                            c.tag = 1;
                         }
                     }
                     SK.constraint.RemoveTagged();
@@ -1306,15 +1305,20 @@ void GraphicsWindow::MouseLeftDown(double mx, double my, bool shiftDown, bool ct
 
 void GraphicsWindow::MouseLeftUp(double mx, double my, bool shiftDown, bool ctrlDown) {
     orig.mouseDown = false;
-    hoverWasSelectedOnMousedown = false;
 
     switch(pending.operation) {
         case Pending::DRAGGING_POINTS:
-            SS.extraLine.draw = false;
-            // fall through
         case Pending::DRAGGING_CONSTRAINT:
         case Pending::DRAGGING_NORMAL:
         case Pending::DRAGGING_RADIUS:
+            if(!hoverWasSelectedOnMousedown) {
+                // And then clear the selection again, since they
+                // probably didn't want that selected if they just
+                // were dragging it.
+                ClearSelection();
+            }
+            hoverWasSelectedOnMousedown = false;
+            SS.extraLine.draw = false;
             ClearPending();
             Invalidate();
             break;

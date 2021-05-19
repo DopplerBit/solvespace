@@ -883,13 +883,18 @@ public:
         RgbaColor   color;
         double      width;
         int         zIndex;
+        bool        exportable;
+        StipplePattern stippleType;
     } Default;
     static const Default Defaults[];
 
     static std::string CnfColor(const std::string &prefix);
     static std::string CnfWidth(const std::string &prefix);
+    static std::string CnfStippleType(const std::string &prefix);
+    static std::string CnfStippleScale(const std::string &prefix);
     static std::string CnfTextHeight(const std::string &prefix);
     static std::string CnfPrefixToName(const std::string &prefix);
+    static std::string CnfExportable(const std::string &prefix);
 
     static void CreateAllDefaultStyles();
     static void CreateDefaultStyle(hStyle h);
@@ -916,7 +921,11 @@ public:
     static bool Exportable(int hs);
     static hStyle ForEntity(hEntity he);
     static StipplePattern PatternType(hStyle hs);
+    static double StippleScale(hStyle hs);
     static double StippleScaleMm(hStyle hs);
+    static std::string StipplePatternName(hStyle hs);
+    static std::string StipplePatternName(StipplePattern stippleType);
+    static StipplePattern StipplePatternFromString(std::string name);
 
     std::string DescriptionString() const;
 

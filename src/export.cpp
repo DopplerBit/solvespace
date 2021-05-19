@@ -207,7 +207,6 @@ void SolveSpaceUI::ExportViewOrWireframeTo(const Platform::Path &filename, bool 
     for(auto &entity : SK.entity) {
         Entity *e = &entity;
         if(!e->IsVisible()) continue;
-        if(e->construction) continue;
 
         if(SS.exportPwlCurves || sm || fabs(SS.exportOffset) > LENGTH_EPS)
         {
@@ -367,9 +366,9 @@ void SolveSpaceUI::ExportLinesAndMesh(SEdgeList *sel, SBezierList *sbl, SMesh *s
 
             // And calculate lighting for the triangle
             Vector n = tt.Normal().WithMagnitude(1);
-            double lighting = SS.ambientIntensity +
+            double lighting = min(1.0, SS.ambientIntensity +
                                   max(0.0, (SS.lightIntensity[0])*(n.Dot(l0))) +
-                                  max(0.0, (SS.lightIntensity[1])*(n.Dot(l1)));
+                                  max(0.0, (SS.lightIntensity[1])*(n.Dot(l1))));
             double r = min(1.0, tt.meta.color.redF()   * lighting),
                    g = min(1.0, tt.meta.color.greenF() * lighting),
                    b = min(1.0, tt.meta.color.blueF()  * lighting);
